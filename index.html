@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RemitSlip — China Remittance Receipt</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --red: #c0170f; --red2: #e8251b; --gold: #d4a017; --gold2: #f0c040;
+  --ink: #0c0c0c; --panel: #141414; --field: #1c1c1c; --border: #272727;
+  --text: #e8e0d0; --muted: #555; --green: #22863a;
+}
+html, body { height: 100%; }
+body { background: var(--ink); font-family: 'Outfit', sans-serif; color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+header { background: #0e0e0e; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 56px; flex-shrink: 0; flex-wrap: wrap; gap: 6px; }
+.logo { font-weight: 800; font-size: 1.05rem; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+.logo .flag-pair { font-size: 1.2rem; }
+.logo em { color: var(–gold); font-style: normal; }
+.header-tag { font-family: ‘DM Mono’, monospace; font-size: 0.58rem; color: #3a3a3a; letter-spacing: 0.12em; text-transform: uppercase; }
+
+.main-layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+.panel { width: 360px; min-width: 0; background: var(–panel); border-right: 1px solid var(–border); overflow-y: auto; padding: 20px 18px 40px; display: flex; flex-direction: column; gap: 20px; flex-shrink: 0; }
+.section-label { font-family: ‘DM Mono’, monospace; font-size: 0.58rem; letter-spacing: 0.16em; text-transform: uppercase; color: #404040; margin-bottom: 10px; padding-bottom: 7px; border-bottom: 1px solid #1e1e1e; }
+.field-group { display: flex; flex-direction: column; gap: 8px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+label { font-size: 0.68rem; font-weight: 600; color: #555; margin-bottom: 3px; display: block; letter-spacing: 0.02em; }
+input, select, textarea { width: 100%; background: var(–field); border: 1px solid #272727; color: var(–text); font-family: ‘DM Mono’, monospace; font-size: 0.76rem; padding: 8px 10px; border-radius: 5px; outline: none; transition: border-color 0.2s; }
+input:focus, select:focus, textarea:focus { border-color: var(–red); }
+select option { background: var(–field); }
+textarea { resize: vertical; min-height: 50px; }
+input[readonly] { color: #666; cursor: default; }
+
+.fx-banner { background: linear-gradient(135deg, #1a0a00, #200d02); border: 1px solid #3a1a00; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; }
+.fx-main { font-size: 0.75rem; color: var(–gold2); font-family: ‘DM Mono’, monospace; }
+.fx-label { font-size: 0.57rem; color: #5a3a00; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 3px; }
+.fx-update { font-size: 0.56rem; color: #3a2800; }
+.fx-arrow { font-size: 1.3rem; color: #3a1a00; }
+
+.style-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.style-card { cursor: pointer; border: 2px solid #222; border-radius: 7px; padding: 9px 7px; text-align: center; font-size: 0.6rem; color: #555; transition: all 0.18s; background: #181818; }
+.style-card:hover { border-color: #3a3a3a; color: #999; }
+.style-card.active { border-color: var(–red); color: var(–text); background: #1e0a08; }
+.style-card .ic { font-size: 1.2rem; display: block; margin-bottom: 3px; }
+
+.btn-gen { background: var(–red); color: #fff; border: none; padding: 12px; font-family: ‘Outfit’, sans-serif; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.04em; border-radius: 6px; cursor: pointer; width: 100%; transition: background 0.2s; }
+.btn-gen:hover { background: #a01208; }
+.btn-reset { background: transparent; border: 1px solid #272727; color: #444; padding: 8px; font-family: ‘DM Mono’, monospace; font-size: 0.7rem; border-radius: 6px; cursor: pointer; width: 100%; transition: all 0.2s; }
+.btn-reset:hover { border-color: #444; color: #888; }
+
+.canvas-area { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 28px 20px 40px; overflow-y: auto; gap: 16px; background: #0e0e0e; min-width: 0; }
+.canvas-label { font-family: ‘DM Mono’, monospace; font-size: 0.58rem; color: #333; letter-spacing: 0.12em; text-transform: uppercase; align-self: flex-start; }
+
+#receipt { width: 100%; max-width: 420px; font-family: ‘DM Mono’, monospace; transition: all 0.3s ease; }
+
+.r-fx { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 14px 16px; margin-bottom: 4px; }
+.r-fx .cur-label { font-size: 0.56rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
+.r-fx .cur-amount { font-size: 1.45rem; letter-spacing: -0.5px; }
+.r-fx .cur-name { font-size: 0.57rem; margin-top: 2px; }
+.r-fx .right { text-align: right; }
+.r-fx .arrow-col { text-align: center; font-size: 1rem; }
+
+/* OFFICIAL */
+#receipt.s-official { background: #fff; color: #111; padding: 0; box-shadow: 0 10px 60px rgba(0,0,0,0.5); overflow: hidden; }
+.s-official .r-header { background: var(–red); padding: 20px 26px 16px; position: relative; overflow: hidden; }
+.s-official .r-header::before { content:‘¥’; position:absolute; right:-10px; top:-10px; font-size:90px; color:rgba(255,255,255,0.06); font-weight:900; line-height:1; }
+.s-official .r-bank { font-family:‘Outfit’,sans-serif; font-size:0.7rem; font-weight:700; color:rgba(255,255,255,0.55); letter-spacing:0.12em; text-transform:uppercase; }
+.s-official .r-title { font-family:‘Outfit’,sans-serif; font-size:1.4rem; font-weight:800; color:#fff; margin-top:3px; }
+.s-official .r-subtitle { font-size:0.63rem; color:rgba(255,255,255,0.5); margin-top:3px; letter-spacing:0.06em; }
+.s-official .r-body { padding: 20px 26px 28px; position: relative; }
+.s-official .r-check { display:inline-flex; align-items:center; gap:6px; background:#e8f5e9; color:#2e7d32; font-size:0.6rem; font-weight:700; padding:3px 10px; border-radius:20px; letter-spacing:0.08em; margin-bottom:14px; }
+.s-official .r-fx { background:#fafafa; border:1px solid #f0f0f0; border-radius:8px; }
+.s-official .r-fx .cur-label { color:#aaa; }
+.s-official .r-fx .cur-amount { color:#111; }
+.s-official .r-fx .cur-name { color:#aaa; }
+.s-official .r-fx .right .cur-amount { color: var(–red); }
+.s-official .r-fx .arrow-col { color:#ddd; }
+.s-official .r-rate { font-size:0.59rem; color:#ccc; text-align:center; margin-bottom:16px; }
+.s-official .r-divider { border:none; border-top:1px solid #f0f0f0; margin:12px 0; }
+.s-official .r-section-head { font-size:0.58rem; color:#bbb; letter-spacing:0.1em; margin-bottom:7px; }
+.s-official .r-row { display:flex; justify-content:space-between; font-size:0.72rem; margin-bottom:7px; }
+.s-official .r-row .k { color:#bbb; }
+.s-official .r-row .v { color:#111; text-align:right; max-width:58%; word-break:break-word; }
+.s-official .r-ref { font-size:0.58rem; color:#ddd; text-align:center; margin-top:18px; letter-spacing:0.1em; }
+.s-official .r-footer { font-size:0.58rem; color:#ccc; text-align:center; margin-top:5px; }
+.s-official .r-stamp { width:62px; height:62px; border:2px solid rgba(192,23,15,0.25); border-radius:50%; display:flex; align-items:center; justify-content:center; position:absolute; right:26px; bottom:30px; font-family:‘Outfit’,sans-serif; font-size:0.4rem; color:rgba(192,23,15,0.3); text-align:center; letter-spacing:0.05em; text-transform:uppercase; line-height:1.5; font-weight:700; }
+
+/* DARK */
+#receipt.s-dark { background:#0d0d0d; color:#e0d8cc; border:1px solid #1e1e1e; padding:0; box-shadow:0 16px 80px rgba(0,0,0,0.8); overflow:hidden; }
+.s-dark .r-top-stripe { background:var(–red); height:4px; }
+.s-dark .r-body { padding:26px 28px 30px; }
+.s-dark .r-bank { font-size:0.63rem; color:#444; letter-spacing:0.14em; text-transform:uppercase; }
+.s-dark .r-title { font-family:‘Outfit’,sans-serif; font-weight:800; font-size:1.35rem; color:#fff; margin-top:5px; }
+.s-dark .r-subtitle { font-size:0.6rem; color:#3a3a3a; margin-top:3px; }
+.s-dark .r-check { display:inline-flex; align-items:center; gap:6px; border:1px solid #1e3a1e; color:#4caf50; font-size:0.6rem; padding:3px 10px; border-radius:20px; letter-spacing:0.08em; margin-top:12px; margin-bottom:18px; }
+.s-dark .r-fx { background:#141414; border:1px solid #1e1e1e; border-radius:10px; }
+.s-dark .r-fx .cur-label { color:#333; }
+.s-dark .r-fx .cur-amount { color:#fff; }
+.s-dark .r-fx .cur-name { color:#333; }
+.s-dark .r-fx .right .cur-amount { color:var(–gold2); }
+.s-dark .r-fx .arrow-col { color:#222; }
+.s-dark .r-rate { font-size:0.58rem; color:#2d2d2d; text-align:center; margin-bottom:16px; }
+.s-dark .r-divider { border:none; border-top:1px solid #1c1c1c; margin:11px 0; }
+.s-dark .r-section-head { font-size:0.56rem; color:#2e2e2e; letter-spacing:0.12em; margin-bottom:7px; text-transform:uppercase; }
+.s-dark .r-row { display:flex; justify-content:space-between; font-size:0.72rem; margin-bottom:8px; }
+.s-dark .r-row .k { color:#333; }
+.s-dark .r-row .v { color:#c0b8ac; text-align:right; max-width:58%; word-break:break-word; }
+.s-dark .r-ref { font-size:0.56rem; color:#252525; text-align:center; margin-top:20px; letter-spacing:0.14em; text-transform:uppercase; }
+.s-dark .r-footer { font-size:0.56rem; color:#1e1e1e; text-align:center; margin-top:5px; }
+
+/* GOLD */
+#receipt.s-gold { background:#0a0700; color:#c8a84a; padding:0; border:1px solid #2a1c00; box-shadow:0 0 0 1px #160e00, 0 16px 80px rgba(0,0,0,0.9); overflow:hidden; }
+.s-gold .r-header { padding:22px 28px 16px; border-bottom:1px solid #2a1c00; position:relative; }
+.s-gold .r-header::after { content:‘国际汇款’; position:absolute; right:24px; top:22px; font-family:‘Noto Serif SC’,serif; font-size:1rem; color:#2a1800; letter-spacing:0.1em; }
+.s-gold .r-bank { font-size:0.6rem; color:#4a3200; letter-spacing:0.16em; text-transform:uppercase; margin-bottom:7px; }
+.s-gold .r-ornament { color:#2a1c00; letter-spacing:8px; font-size:0.85rem; margin:5px 0; }
+.s-gold .r-title { font-family:‘Noto Serif SC’,serif; font-size:1.15rem; color:var(–gold2); letter-spacing:0.05em; }
+.s-gold .r-subtitle { font-size:0.59rem; color:#4a3200; letter-spacing:0.1em; margin-top:3px; }
+.s-gold .r-body { padding:18px 28px 28px; }
+.s-gold .r-check { display:inline-flex; align-items:center; gap:5px; border:1px solid #2a1c00; color:var(–gold); font-size:0.58rem; padding:3px 10px; border-radius:20px; letter-spacing:0.08em; margin-bottom:14px; }
+.s-gold .r-fx { background:#0e0900; border:1px solid #2a1c00; border-radius:6px; }
+.s-gold .r-fx .cur-label { color:#4a3200; }
+.s-gold .r-fx .cur-amount { color:#c8a84a; }
+.s-gold .r-fx .cur-name { color:#4a3200; }
+.s-gold .r-fx .right .cur-amount { color:var(–gold2); }
+.s-gold .r-fx .arrow-col { color:#2a1c00; }
+.s-gold .r-rate { font-size:0.58rem; color:#3a2400; text-align:center; margin-bottom:14px; }
+.s-gold .r-divider { border:none; border-top:1px solid #1e1200; margin:11px 0; }
+.s-gold .r-section-head { font-size:0.56rem; color:#3a2400; letter-spacing:0.1em; margin-bottom:7px; text-transform:uppercase; }
+.s-gold .r-row { display:flex; justify-content:space-between; font-size:0.71rem; margin-bottom:8px; }
+.s-gold .r-row .k { color:#3a2400; }
+.s-gold .r-row .v { color:#a88030; text-align:right; max-width:58%; word-break:break-word; }
+.s-gold .r-ref { font-size:0.56rem; color:#2a1800; text-align:center; margin-top:18px; letter-spacing:0.14em; text-transform:uppercase; }
+.s-gold .r-seal { text-align:center; margin-top:12px; font-family:‘Noto Serif SC’,serif; font-size:0.62rem; color:#2a1800; letter-spacing:0.1em; }
+.s-gold .r-footer { font-size:0.56rem; color:#201400; text-align:center; margin-top:5px; font-family:‘Noto Serif SC’,serif; }
+
+/* WIRE */
+#receipt.s-wire { background:#f7f4ee; color:#1a1a1a; padding:0; box-shadow:0 10px 50px rgba(0,0,0,0.5); border-top:5px solid var(–red); }
+.s-wire .r-body { padding:22px 26px 28px; }
+.s-wire .r-bank { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#111; }
+.s-wire .r-title { font-size:0.7rem; color:#999; letter-spacing:0.08em; text-transform:uppercase; margin-top:3px; }
+.s-wire .r-check { display:inline-flex; align-items:center; gap:5px; background:#e8f5e9; color:#2e7d32; font-size:0.6rem; font-weight:700; padding:4px 11px; border-radius:3px; letter-spacing:0.06em; margin:12px 0 16px; }
+.s-wire .r-fx { background:#fff; border:1px solid #e0dbd0; }
+.s-wire .r-fx .cur-label { color:#bbb; }
+.s-wire .r-fx .cur-amount { color:#111; }
+.s-wire .r-fx .cur-name { color:#bbb; }
+.s-wire .r-fx .right .cur-amount { color:var(–red); }
+.s-wire .r-fx .arrow-col { color:#ccc; }
+.s-wire .r-rate { font-size:0.58rem; color:#ccc; text-align:center; margin-bottom:14px; }
+.s-wire .r-divider { border:none; border-top:1px dashed #ddd; margin:11px 0; }
+.s-wire .r-section-head { font-size:0.56rem; color:#ccc; letter-spacing:0.1em; margin-bottom:7px; text-transform:uppercase; }
+.s-wire .r-row { display:flex; justify-content:space-between; font-size:0.71rem; margin-bottom:7px; }
+.s-wire .r-row .k { color:#aaa; text-transform:uppercase; font-size:0.63rem; letter-spacing:0.04em; }
+.s-wire .r-row .v { color:#111; text-align:right; max-width:58%; word-break:break-word; }
+.s-wire .r-ref { font-size:0.58rem; color:#ccc; text-align:center; margin-top:18px; letter-spacing:0.1em; }
+.s-wire .r-footer { font-size:0.58rem; color:#ccc; text-align:center; margin-top:5px; }
+.s-wire .barcode { text-align:center; margin-top:14px; font-size:2.6rem; letter-spacing:-3px; color:#ddd; }
+
+.action-row { display:flex; gap:8px; width:100%; max-width:420px; flex-wrap:wrap; }
+.act-btn { flex:1; min-width:90px; padding:10px 8px; font-family:‘Outfit’,sans-serif; font-weight:700; font-size:0.72rem; border-radius:6px; border:none; cursor:pointer; transition:all 0.18s; display:flex; align-items:center; justify-content:center; gap:4px; }
+.act-btn.print { background:#1a1a1a; color:#888; border:1px solid #252525; }
+.act-btn.print:hover { background:#222; }
+.act-btn.dl { background:#0d1f10; color:#4caf50; border:1px solid #142818; }
+.act-btn.dl:hover { background:#112214; }
+.act-btn.cp { background:#100a00; color:var(–gold); border:1px solid #1e1200; }
+.act-btn.cp:hover { background:#160d00; }
+.act-btn.save-photo { background:linear-gradient(135deg,#1a0033,#0a001f); color:#bf8fff; border:1px solid #3a1a66; flex-basis:100%; }
+.act-btn.save-photo:hover { background:linear-gradient(135deg,#220044,#100028); }
+
+.toast { position:fixed; bottom:20px; right:20px; background:#1a1a1a; color:#888; border:1px solid #252525; padding:9px 16px; border-radius:6px; font-family:‘DM Mono’,monospace; font-size:0.7rem; opacity:0; transform:translateY(8px); transition:all 0.25s; pointer-events:none; z-index:1000; }
+.toast.show { opacity:1; transform:none; }
+
+#img-overlay { display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.88); align-items:center; justify-content:center; flex-direction:column; gap:18px; backdrop-filter:blur(6px); }
+#img-overlay.visible { display:flex; }
+#overlay-img { max-width:min(90vw,500px); max-height:78vh; border-radius:10px; box-shadow:0 20px 80px rgba(0,0,0,0.9); object-fit:contain; }
+.overlay-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.overlay-btn { padding:11px 20px; border-radius:8px; border:none; font-family:‘Outfit’,sans-serif; font-weight:700; font-size:0.8rem; cursor:pointer; transition:all 0.18s; display:flex; align-items:center; gap:6px; }
+.overlay-btn.save { background:linear-gradient(135deg,#22863a,#1a6b2e); color:#fff; box-shadow:0 4px 20px rgba(34,134,58,0.4); }
+.overlay-btn.save:hover { background:linear-gradient(135deg,#2ea34a,#228838); }
+.overlay-btn.close-ov { background:#1e1e1e; color:#666; border:1px solid #2a2a2a; }
+.overlay-btn.close-ov:hover { color:#999; }
+#overlay-save-btn { display:none; }
+.overlay-hint { font-family:‘DM Mono’,monospace; font-size:0.58rem; color:#444; text-align:center; max-width:320px; line-height:1.6; }
+
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-thumb { background:#222; border-radius:4px; }
+
+@media (max-width: 700px) {
+.main-layout { flex-direction:column; overflow:visible; }
+.panel { width:100%; border-right:none; border-bottom:1px solid var(–border); overflow-y:visible; }
+.canvas-area { padding:20px 12px 40px; overflow-y:visible; }
+header { height:auto; padding:10px 16px; }
+}
+@media (min-width:701px) and (max-width:960px) {
+.panel { width:300px; }
+}
+</style>
+
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="flag-pair">🌍→🇨🇳</span>Remit<em>Slip</em></div>
+  <div class="header-tag">International Wire · China Remittance · Receipt Designer</div>
+</header>
+
+<div class="main-layout">
+  <div class="panel">
+
+```
+<div>
+  <div class="section-label">Receipt Style</div>
+  <div class="style-grid">
+    <div class="style-card active" data-style="official"><span class="ic">🏦</span>Official</div>
+    <div class="style-card" data-style="dark"><span class="ic">◼</span>Dark Premium</div>
+    <div class="style-card" data-style="gold"><span class="ic">金</span>Gold Seal</div>
+    <div class="style-card" data-style="wire"><span class="ic">🧾</span>Wire Slip</div>
+  </div>
+</div>
+
+<div>
+  <div class="section-label">Exchange Rate</div>
+  <div class="fx-banner">
+    <div>
+      <div class="fx-label">Indicative Rate</div>
+      <div class="fx-main">1 <span id="src-cur-label">USD</span> = <span id="fx-display">7.24</span> CNY</div>
+      <div class="fx-update">Mid-market · non-binding</div>
+    </div>
+    <div class="fx-arrow">⇄</div>
+  </div>
+  <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+    <div><label>Rate Used</label><input type="number" id="f-rate" value="7.24" step="0.01" min="0.01"></div>
+    <div><label>Wire Fee</label><input type="text" id="f-fee" value="15.00" inputmode="decimal"></div>
+  </div>
+</div>
+
+<div>
+  <div class="section-label">Amounts</div>
+  <div class="field-group">
+    <div>
+      <label>Sender Country / Currency</label>
+      <select id="f-country">
+        <option value="US">🇺🇸 United States (USD $)</option>
+        <option value="NG">🇳🇬 Nigeria (NGN ₦)</option>
+        <option value="GB">🇬🇧 United Kingdom (GBP £)</option>
+        <option value="EU">🇩🇪 Germany (EUR €)</option>
+        <option value="CA">🇨🇦 Canada (CAD C$)</option>
+        <option value="AU">🇦🇺 Australia (AUD A$)</option>
+        <option value="SG">🇸🇬 Singapore (SGD S$)</option>
+        <option value="MY">🇲🇾 Malaysia (MYR RM)</option>
+        <option value="AE">🇦🇪 UAE (AED)</option>
+        <option value="JP">🇯🇵 Japan (JPY ¥)</option>
+        <option value="KR">🇰🇷 South Korea (KRW ₩)</option>
+      </select>
+    </div>
+    <div><label>Send Amount (<span id="send-sym">$</span>)</label><input type="text" id="f-src" value="1,500.00" inputmode="decimal"></div>
+    <div><label>Recipient Receives (CNY ¥) — auto</label><input type="text" id="f-cny" readonly></div>
+  </div>
+</div>
+
+<div>
+  <div class="section-label">Sender 🌍 (Origin Country)</div>
+  <div class="field-group">
+    <div><label>Full Name</label><input type="text" id="f-sender" value="Michael J. Carter"></div>
+    <div><label>Sending Bank</label><input type="text" id="f-sbank" value="Citibank N.A."></div>
+    <div><label>Account (masked)</label><input type="text" id="f-saccount" value="**** **** 7842"></div>
+    <div><label id="lbl-swift">SWIFT / BIC</label><input type="text" id="f-swift" value="CITIUS33"></div>
+  </div>
+</div>
+
+<div>
+  <div class="section-label">Beneficiary 🇨🇳 (China 中国)</div>
+  <div class="field-group">
+    <div><label>Full Name</label><input type="text" id="f-recipient" value="Wei Zhang · 张伟"></div>
+    <div><label>Receiving Bank</label><input type="text" id="f-rbank" value="Industrial & Commercial Bank of China (ICBC)"></div>
+    <div><label>Account / UnionPay (masked)</label><input type="text" id="f-raccount" value="**** **** **** 3391"></div>
+    <div><label>City / Province</label><input type="text" id="f-city" value="Beijing · 北京市"></div>
+  </div>
+</div>
+
+<div>
+  <div class="section-label">Transaction</div>
+  <div class="field-group">
+    <div><label>Reference Number</label><input type="text" id="f-ref" value="WIRE-2026-CN-RMT-004821"></div>
+    <div class="field-row">
+      <div><label>Date</label><input type="text" id="f-date" value=""></div>
+      <div><label>Time (UTC)</label><input type="text" id="f-time" value=""></div>
+    </div>
+    <div><label>Purpose / Narration</label><textarea id="f-purpose">China Remittance — Family Support</textarea></div>
+    <div><label>Institution Name</label><input type="text" id="f-brand" value="Citibank"></div>
+  </div>
+</div>
+
+<button class="btn-gen" onclick="generate()">⚡ Generate Receipt</button>
+<button class="btn-reset" onclick="resetAll()">↩ Reset Defaults</button>
+```
+
+  </div>
+
+  <div class="canvas-area">
+    <div class="canvas-label">Live Preview — China Remittance Receipt</div>
+    <div id="receipt" class="s-official"></div>
+    <div class="action-row">
+      <button class="act-btn print" onclick="doPrint()">🖨 Print</button>
+      <button class="act-btn dl" onclick="doDownload()">↓ PNG</button>
+      <button class="act-btn cp" onclick="doCopy()">⎘ Copy Ref</button>
+      <button class="act-btn save-photo" onclick="doSavePhoto()">📲 Save to Photos</button>
+    </div>
+  </div>
+</div>
+
+<div id="img-overlay">
+  <img id="overlay-img" src="" alt="Receipt Preview">
+  <div class="overlay-actions">
+    <button class="overlay-btn save" id="overlay-save-btn" onclick="overlayDownload()">⬇ Save Photo</button>
+    <button class="overlay-btn close-ov" onclick="closeOverlay()">✕ Close</button>
+  </div>
+  <div class="overlay-hint" id="overlay-hint">Tap "Save Photo" to download</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var receiptStyle = 'official';
+var _overlayBlob = null;
+var _overlayFilename = '';
+
+var countryMap = {
+  'US': { sym:'$',   cur:'USD', name:'US Dollar · USD',          label:'SWIFT/BIC',  country:'United States', flag:'🇺🇸' },
+  'NG': { sym:'₦',   cur:'NGN', name:'Nigerian Naira · NGN',     label:'SWIFT/IBAN', country:'Nigeria',        flag:'🇳🇬' },
+  'GB': { sym:'£',   cur:'GBP', name:'British Pound · GBP',      label:'SWIFT/IBAN', country:'United Kingdom', flag:'🇬🇧' },
+  'EU': { sym:'€',   cur:'EUR', name:'Euro · EUR',               label:'SWIFT/IBAN', country:'Germany',        flag:'🇩🇪' },
+  'CA': { sym:'C$',  cur:'CAD', name:'Canadian Dollar · CAD',    label:'SWIFT/IBAN', country:'Canada',         flag:'🇨🇦' },
+  'AU': { sym:'A$',  cur:'AUD', name:'Australian Dollar · AUD',  label:'SWIFT/IBAN', country:'Australia',      flag:'🇦🇺' },
+  'SG': { sym:'S$',  cur:'SGD', name:'Singapore Dollar · SGD',   label:'SWIFT/IBAN', country:'Singapore',      flag:'🇸🇬' },
+  'MY': { sym:'RM',  cur:'MYR', name:'Malaysian Ringgit · MYR',  label:'SWIFT/IBAN', country:'Malaysia',       flag:'🇲🇾' },
+  'AE': { sym:'AED', cur:'AED', name:'UAE Dirham · AED',         label:'SWIFT/IBAN', country:'UAE',            flag:'🇦🇪' },
+  'JP': { sym:'¥',   cur:'JPY', name:'Japanese Yen · JPY',       label:'SWIFT/IBAN', country:'Japan',          flag:'🇯🇵' },
+  'KR': { sym:'₩',   cur:'KRW', name:'South Korean Won · KRW',  label:'SWIFT/IBAN', country:'South Korea',    flag:'🇰🇷' }
+};
+
+function getCountry() {
+  var code = document.getElementById('f-country').value;
+  return countryMap[code] || countryMap['US'];
+}
+
+function calcCNY() {
+  var src  = parseFloat((document.getElementById('f-src').value || '0').replace(/,/g, '')) || 0;
+  var rate = parseFloat(document.getElementById('f-rate').value) || 7.24;
+  var fee  = parseFloat((document.getElementById('f-fee').value || '0').replace(/,/g, '')) || 0;
+  var net  = Math.max(0, src - fee) * rate;
+  document.getElementById('f-cny').value = net.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function vals() {
+  var c = getCountry();
+  return {
+    brand:      document.getElementById('f-brand').value || 'Citibank',
+    src:        document.getElementById('f-src').value || '0.00',
+    cny:        document.getElementById('f-cny').value || '0.00',
+    sym:        c.sym,
+    cur:        c.cur,
+    curName:    c.name,
+    sCountry:   c.country,
+    sFlag:      c.flag,
+    rate:       document.getElementById('f-rate').value || '7.24',
+    fee:        document.getElementById('f-fee').value || '0.00',
+    swiftLabel: c.label,
+    sender:     document.getElementById('f-sender').value || '',
+    sbank:      document.getElementById('f-sbank').value || '',
+    saccount:   document.getElementById('f-saccount').value || '',
+    swift:      document.getElementById('f-swift').value || '',
+    recipient:  document.getElementById('f-recipient').value || '',
+    rbank:      document.getElementById('f-rbank').value || '',
+    raccount:   document.getElementById('f-raccount').value || '',
+    city:       document.getElementById('f-city').value || '',
+    ref:        document.getElementById('f-ref').value || '',
+    date:       document.getElementById('f-date').value || '',
+    time:       document.getElementById('f-time').value || '',
+    purpose:    document.getElementById('f-purpose').value || ''
+  };
+}
+
+function row(k, v) {
+  if (!v) return '';
+  return '<div class="r-row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
+}
+
+function fxBlock(v) {
+  return '<div class="r-fx">'
+    + '<div class="cur"><div class="cur-label">You Send</div><div class="cur-amount">' + v.sym + v.src + '</div><div class="cur-name">' + v.curName + '</div></div>'
+    + '<div class="arrow-col">&#8594;</div>'
+    + '<div class="cur right"><div class="cur-label">They Receive</div><div class="cur-amount">&#165;' + v.cny + '</div><div class="cur-name">Chinese Yuan &middot; CNY</div></div>'
+    + '</div>';
+}
+
+function generate() {
+  var el = document.getElementById('receipt');
+  if (!el) return;
+  calcCNY();
+  var v = vals();
+  el.className = 's-' + receiptStyle;
+  var builders = { official: buildOfficial, dark: buildDark, gold: buildGold, wire: buildWire };
+  var fn = builders[receiptStyle] || buildOfficial;
+  el.innerHTML = fn(v);
+}
+
+function buildOfficial(v) {
+  return '<div class="r-header">'
+    + '<div class="r-bank">' + v.sFlag + ' ' + v.brand + ' &middot; China Remittance &#127464;&#127475;</div>'
+    + '<div class="r-title">Remittance Successful</div>'
+    + '<div class="r-subtitle">' + v.cur + ' &rarr; CNY &middot; Cross-Border Wire to China</div>'
+    + '</div>'
+    + '<div class="r-body">'
+    + '<div class="r-check">&#10003; &nbsp;TRANSACTION CONFIRMED</div>'
+    + fxBlock(v)
+    + '<div class="r-rate">Exchange Rate: 1 ' + v.cur + ' = ' + v.rate + ' CNY &nbsp;&middot;&nbsp; Wire Fee: ' + v.sym + v.fee + '</div>'
+    + '<hr class="r-divider">'
+    + '<div class="r-section-head">SENDER &middot; ' + v.sCountry.toUpperCase() + ' ' + v.sFlag + '</div>'
+    + row('Name', v.sender) + row('Bank', v.sbank) + row('Account', v.saccount) + row(v.swiftLabel, v.swift)
+    + '<hr class="r-divider">'
+    + '<div class="r-section-head">BENEFICIARY &middot; CHINA &#20013;&#22269; &#127464;&#127475;</div>'
+    + row('Name', v.recipient) + row('Bank', v.rbank) + row('Account', v.raccount) + row('City', v.city)
+    + '<hr class="r-divider">'
+    + row('Date', v.date) + row('Time', v.time) + row('Purpose', v.purpose)
+    + '<hr class="r-divider">'
+    + '<div class="r-ref">REF: ' + v.ref + '</div>'
+    + '<div class="r-footer">Keep this receipt for your records &middot; Processing: 1&#8211;3 business days</div>'
+    + '<div class="r-stamp">APPROVED<br>WIRE<br>TRANSFER</div>'
+    + '</div>';
+}
+
+function buildDark(v) {
+  return '<div class="r-top-stripe"></div>'
+    + '<div class="r-body">'
+    + '<div class="r-bank">' + v.sFlag + ' ' + v.brand + ' &rarr; &#127464;&#127475; China Remittance</div>'
+    + '<div class="r-title">Wire Transfer Sent</div>'
+    + '<div class="r-subtitle">International Remittance &middot; ' + v.cur + ' to CNY</div>'
+    + '<div class="r-check">&#10003; &nbsp;Confirmed &amp; In Transit</div>'
+    + fxBlock(v)
+    + '<div class="r-rate">Rate: 1 ' + v.cur + ' = ' + v.rate + ' CNY &nbsp;&middot;&nbsp; Fee: ' + v.sym + v.fee + '</div>'
+    + '<hr class="r-divider">'
+    + '<div class="r-section-head">Sender &middot; ' + v.sCountry + '</div>'
+    + row('Name', v.sender) + row('Bank', v.sbank) + row('Account', v.saccount) + row(v.swiftLabel, v.swift)
+    + '<hr class="r-divider">'
+    + '<div class="r-section-head">Beneficiary &middot; &#20013;&#22269; China</div>'
+    + row('Name', v.recipient) + row('Bank', v.rbank) + row('Account', v.raccount) + row('City', v.city)
+    + '<hr class="r-divider">'
+    + row('Date', v.date) + row('Time', v.time) + row('Purpose', v.purpose)
+    + '<div class="r-ref">REF: ' + v.ref + '</div>'
+    + '<div class="r-footer">' + v.brand + ' &middot; China Remittance Services</div>'
+    + '</div>';
+}
+
+function buildGold(v) {
+  return '<div class="r-header">'
+    + '<div class="r-bank">' + v.brand + ' &middot; &#22269;&#38469;&#30005;&#27719; China Remittance</div>'
+    + '<div class="r-ornament">&#10022; &#10022; &#10022;</div>'
+    + '<div class="r-title">&#22269;&#38469;&#27719;&#27454;&#25104;&#21151;</div>'
+    + '<div class="r-subtitle">China Remittance Confirmed &middot; ' + v.cur + ' &rarr; CNY</div>'
+    + '</div>'
+    + '<div class="r-body">'
+    + '<div class="r-check">&#10003; &nbsp;&#24050;&#30830;&#35748; &middot; AUTHORISED</div>'
+    + fxBlock(v)
+    + '<div class="r-rate">&#27719;&#29575; Rate: 1 ' + v.cur + ' = ' + v.rate + ' CNY &nbsp;&middot;&nbsp; &#25163;&#32493;&#36153; Fee: ' + v.sym + v.fee + '</div>'
+    + '<hr class="r-divider">'
+    + '<div class="r-section-head">&#27719;&#27454;&#20154; Sender &middot; ' + v.sCountry + ' ' + v.sFlag + '</div>'
+    + row('&#27719;&#27454;&#20154; Name', v.sender) + row('&#27719;&#20986;&#34892; Bank', v.sbank) + row('&#36134;&#21495; Account', v.saccount) + row(v.swiftLabel, v.swift)
+    + '<hr class="r-divider">'
+    + '<div class="r-section-head">&#25910;&#27454;&#20154; Beneficiary &middot; &#20013;&#22269; &#127464;&#127475;</div>'
+    + row('&#25910;&#27454;&#20154; Name', v.recipient) + row('&#25910;&#27454;&#34892; Bank', v.rbank) + row('&#36134;&#21495; Account', v.raccount) + row('&#22478;&#24066; City', v.city)
+    + '<hr class="r-divider">'
+    + row('&#26085;&#26399; Date', v.date) + row('&#26102;&#38388; Time', v.time) + row('&#29992;&#36884; Purpose', v.purpose)
+    + '<div class="r-ref">&#21442;&#32771;&#21495; REF: ' + v.ref + '</div>'
+    + '<div class="r-seal">&#10022; ' + v.brand + ' &middot; &#22269;&#38469;&#27719;&#27454;&#26381;&#21153; &#10022;</div>'
+    + '<div class="r-footer">&#35831;&#20445;&#30041;&#27492;&#20551;&#35777; &middot; Please keep this receipt</div>'
+    + '</div>';
+}
+
+function buildWire(v) {
+  return '<div class="r-body">'
+    + '<div class="r-bank">' + v.brand.toUpperCase() + ' &mdash; WIRE DEPT &middot; CHINA REMITTANCE</div>'
+    + '<div class="r-title">INTERNATIONAL WIRE TRANSFER RECEIPT</div>'
+    + '<div class="r-check">&#10003; &nbsp;WIRE SENT &mdash; FUNDS IN TRANSIT TO CHINA</div>'
+    + fxBlock(v)
+    + '<div class="r-rate">EXCH RATE: 1 ' + v.cur + ' = ' + v.rate + ' CNY &nbsp;|&nbsp; WIRE FEE: ' + v.sym + v.fee + '</div>'
+    + '<hr class="r-divider">'
+    + '<div class="r-section-head">ORIGINATOR &middot; ' + v.sCountry.toUpperCase() + '</div>'
+    + row('SENDER NAME', v.sender) + row('SENDING BANK', v.sbank) + row('DEBIT ACCOUNT', v.saccount) + row(v.swiftLabel, v.swift)
+    + '<hr class="r-divider">'
+    + '<div class="r-section-head">BENEFICIARY &middot; CHINA &#20013;&#22269;</div>'
+    + row('BENEFICIARY', v.recipient) + row('RECV. BANK', v.rbank) + row('CREDIT ACCOUNT', v.raccount) + row('CITY', v.city)
+    + '<hr class="r-divider">'
+    + row('VALUE DATE', v.date) + row('TIME (UTC)', v.time) + row('PURPOSE', v.purpose)
+    + '<div class="r-ref">REFERENCE: ' + v.ref + '</div>'
+    + '<div class="barcode">&#9612;&#9616;&#9612;&#9612;&#9616;&#9612;&#9616;&#9612;&#9612;&#9616;&#9612;&#9612;&#9616;</div>'
+    + '<div class="r-footer">Processing 1&#8211;3 business days &middot; ' + v.brand + ' China Remittance Services</div>'
+    + '</div>';
+}
+
+function renderToCanvas() {
+  return new Promise(function(resolve, reject) {
+    function run() {
+      var filename = 'china-remittance-' + Date.now() + '.png';
+      html2canvas(document.getElementById('receipt'), { scale:3, useCORS:true, backgroundColor:null, logging:false })
+        .then(function(canvas) { canvas.toBlob(function(blob) { resolve({canvas:canvas, blob:blob, filename:filename}); }, 'image/png'); })
+        .catch(reject);
+    }
+    if (typeof html2canvas === 'undefined') {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload = run;
+      s.onerror = function() { reject(new Error('Failed to load html2canvas')); };
+      document.head.appendChild(s);
+      toast('Loading renderer…');
+    } else { run(); }
+  });
+}
+
+function doDownload() {
+  var btn = document.querySelector('.act-btn.dl');
+  if (btn.disabled) return;
+  btn.textContent = '⏳ Saving…'; btn.disabled = true;
+  renderToCanvas().then(function(r) {
+    var url = URL.createObjectURL(r.blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = r.filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+    toast('Image downloaded!');
+  }).catch(function(err) { console.error(err); toast('Save failed — try again'); })
+  .finally(function() { btn.textContent = '↓ PNG'; btn.disabled = false; });
+}
+
+function doSavePhoto() {
+  var btn = document.querySelector('.act-btn.save-photo');
+  if (btn.disabled) return;
+  btn.textContent = '⏳ Rendering…'; btn.disabled = true;
+  renderToCanvas().then(function(r) {
+    _overlayBlob = r.blob; _overlayFilename = r.filename;
+    document.getElementById('overlay-img').src = r.canvas.toDataURL('image/png');
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    var hint = document.getElementById('overlay-hint');
+    if (isIOS) {
+      hint.innerHTML = '📱 <strong style="color:#bf8fff">iPhone:</strong> Press &amp; hold image → "Add to Photos"';
+      document.getElementById('overlay-save-btn').style.display = 'none';
+    } else {
+      hint.innerHTML = '📲 Tap <strong style="color:#4caf50">Save Photo</strong> to download.';
+      document.getElementById('overlay-save-btn').style.display = 'inline-flex';
+    }
+    document.getElementById('img-overlay').classList.add('visible');
+  }).catch(function(err) { console.error(err); toast('Render failed'); })
+  .finally(function() { btn.textContent = '📲 Save to Photos'; btn.disabled = false; });
+}
+
+function overlayDownload() {
+  if (!_overlayBlob) { toast('Nothing to save'); return; }
+  if (navigator.canShare) {
+    var file = new File([_overlayBlob], _overlayFilename, {type:'image/png'});
+    if (navigator.canShare({files:[file]})) {
+      navigator.share({files:[file], title:'Remittance Receipt', text:'China Remittance Receipt'})
+        .then(function() { toast('Saved!'); closeOverlay(); })
+        .catch(function(e) { if (e.name !== 'AbortError') fallbackSave(); else toast('Cancelled'); });
+      return;
+    }
+  }
+  fallbackSave();
+}
+
+function fallbackSave() {
+  if (!_overlayBlob) return;
+  var url = URL.createObjectURL(_overlayBlob);
+  var a = document.createElement('a');
+  a.href = url; a.download = _overlayFilename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+  toast('Saved to Downloads!'); closeOverlay();
+}
+
+function closeOverlay() {
+  document.getElementById('img-overlay').classList.remove('visible');
+  document.getElementById('overlay-img').src = '';
+  _overlayBlob = null;
+}
+
+function doPrint() {
+  var r = document.getElementById('receipt');
+  var win = window.open('', '_blank');
+  if (!win) { toast('Popup blocked — allow popups and try again'); return; }
+  var styleSheets = Array.from(document.querySelectorAll('style')).map(function(s) { return s.outerHTML; }).join('');
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">'
+    + styleSheets
+    + '<style>body{background:#fff;display:flex;justify-content:center;padding:40px}@media print{body{padding:0}}</style>'
+
+```
++ '</head><body>' + r.outerHTML
++ ['<scr','ipt>window.onload=function(){window.print();window.onfocus=function(){window.close();};}','<\/scr','ipt>'].join('') + '</body></html>';
+```
+
+win.document.open();
+win.document.write(html);
+win.document.close();
+toast(‘Sent to printer…’);
+}
+
+function doCopy() {
+var text = document.getElementById(‘f-ref’).value;
+if (!text) { toast(‘No reference to copy’); return; }
+if (navigator.clipboard && navigator.clipboard.writeText) {
+navigator.clipboard.writeText(text).then(function() { toast(‘Reference copied!’); }).catch(function() { fallbackCopy(text); });
+} else {
+fallbackCopy(text);
+}
+}
+
+function fallbackCopy(text) {
+var ta = document.createElement(‘textarea’);
+ta.value = text; ta.style.position = ‘fixed’; ta.style.opacity = ‘0’;
+document.body.appendChild(ta); ta.focus(); ta.select();
+try { document.execCommand(‘copy’); toast(‘Reference copied!’); } catch(e) { toast(‘Copy failed — select manually’); }
+document.body.removeChild(ta);
+}
+
+function resetAll() {
+receiptStyle = ‘official’;
+document.querySelectorAll(’.style-card’).forEach(function(x) { x.classList.remove(‘active’); });
+var officialCard = document.querySelector(’.style-card[data-style=“official”]’);
+if (officialCard) officialCard.classList.add(‘active’);
+document.getElementById(‘f-country’).value = ‘US’;
+document.getElementById(‘f-brand’).value = ‘Citibank’;
+document.getElementById(‘f-src’).value = ‘1,500.00’;
+document.getElementById(‘f-rate’).value = ‘7.24’;
+document.getElementById(‘f-fee’).value = ‘15.00’;
+document.getElementById(‘f-sender’).value = ‘Michael J. Carter’;
+document.getElementById(‘f-sbank’).value = ‘Citibank N.A.’;
+document.getElementById(‘f-saccount’).value = ‘**** **** 7842’;
+document.getElementById(‘f-swift’).value = ‘CITIUS33’;
+document.getElementById(‘f-recipient’).value = ‘Wei Zhang · 张伟’;
+document.getElementById(‘f-rbank’).value = ‘Industrial & Commercial Bank of China (ICBC)’;
+document.getElementById(‘f-raccount’).value = ‘**** **** **** 3391’;
+document.getElementById(‘f-city’).value = ‘Beijing · 北京市’;
+document.getElementById(‘f-ref’).value = ‘WIRE-2026-CN-RMT-004821’;
+document.getElementById(‘f-purpose’).value = ‘China Remittance — Family Support’;
+document.getElementById(‘fx-display’).textContent = ‘7.24’;
+document.getElementById(‘src-cur-label’).textContent = ‘USD’;
+document.getElementById(‘send-sym’).textContent = ‘$’;
+document.getElementById(‘lbl-swift’).textContent = ‘SWIFT / BIC’;
+var now = new Date();
+document.getElementById(‘f-date’).value = now.toLocaleDateString(‘en-US’, {year:‘numeric’, month:‘short’, day:‘2-digit’});
+document.getElementById(‘f-time’).value = now.toISOString().slice(11,19) + ’ UTC’;
+generate();
+toast(‘Reset to defaults’);
+}
+
+function toast(msg) {
+var t = document.getElementById(‘toast’);
+t.textContent = msg; t.classList.add(‘show’);
+setTimeout(function() { t.classList.remove(‘show’); }, 2400);
+}
+
+// Init
+document.addEventListener(‘DOMContentLoaded’, function() {
+var now = new Date();
+document.getElementById(‘f-date’).value = now.toLocaleDateString(‘en-US’, {year:‘numeric’, month:‘short’, day:‘2-digit’});
+document.getElementById(‘f-time’).value = now.toISOString().slice(11,19) + ’ UTC’;
+
+document.getElementById(‘f-country’).addEventListener(‘change’, function() {
+var c = getCountry();
+document.getElementById(‘src-cur-label’).textContent = c.cur;
+document.getElementById(‘send-sym’).textContent = c.sym;
+document.getElementById(‘lbl-swift’).textContent = c.label;
+generate();
+});
+
+document.getElementById(‘f-rate’).addEventListener(‘input’, function() {
+document.getElementById(‘fx-display’).textContent = this.value || ‘7.24’;
+generate();
+});
+
+var inputs = document.querySelectorAll(‘input:not([readonly]):not(#f-rate):not(#f-country), select:not(#f-country), textarea’);
+for (var i = 0; i < inputs.length; i++) {
+inputs[i].addEventListener(‘input’, generate);
+inputs[i].addEventListener(‘change’, generate);
+}
+
+document.querySelectorAll(’.style-card’).forEach(function(c) {
+c.addEventListener(‘click’, function() {
+document.querySelectorAll(’.style-card’).forEach(function(x) { x.classList.remove(‘active’); });
+c.classList.add(‘active’);
+receiptStyle = c.dataset.style;
+generate();
+});
+});
+
+document.getElementById(‘img-overlay’).addEventListener(‘click’, function(e) {
+if (e.target === this) closeOverlay();
+});
+
+generate();
+});
+</script>
+
+</body>
+</html>
