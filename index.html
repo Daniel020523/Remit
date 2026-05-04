@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RemitSlip — China Remittance Receipt</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -168,7 +169,7 @@ input[readonly] { color: #666; cursor: default; }
 .act-btn.dl:hover { background:#112214; }
 .act-btn.cp { background:#100a00; color:var(–gold); border:1px solid #1e1200; }
 .act-btn.cp:hover { background:#160d00; }
-.act-btn.save-photo { background:linear-gradient(135deg,#1a0033,#0a001f); color:#bf8fff; border:1px solid #3a1a66; flex-basis:100%; }
+.act-btn.save-photo { background:linear-gradient(135deg,#1a0033,#0a001f); color:#bf8fff; border:1px solid #3a1a66; flex-basis:100%; font-size:0.8rem; }
 .act-btn.save-photo:hover { background:linear-gradient(135deg,#220044,#100028); }
 
 .toast { position:fixed; bottom:20px; right:20px; background:#1a1a1a; color:#888; border:1px solid #252525; padding:9px 16px; border-radius:6px; font-family:‘DM Mono’,monospace; font-size:0.7rem; opacity:0; transform:translateY(8px); transition:all 0.25s; pointer-events:none; z-index:1000; }
@@ -306,9 +307,8 @@ header { height:auto; padding:10px 16px; }
     <div id="receipt" class="s-official"></div>
     <div class="action-row">
       <button class="act-btn print" onclick="doPrint()">🖨 Print</button>
-      <button class="act-btn dl" onclick="doDownload()">↓ PNG</button>
       <button class="act-btn cp" onclick="doCopy()">⎘ Copy Ref</button>
-      <button class="act-btn save-photo" onclick="doSavePhoto()">📲 Save to Photos</button>
+      <button class="act-btn save-photo" id="save-img-btn" onclick="doSaveImage()">📥 Save Image</button>
     </div>
   </div>
 </div>
@@ -504,81 +504,82 @@ function buildWire(v) {
 
 function renderToCanvas() {
   return new Promise(function(resolve, reject) {
-    function run() {
-      var filename = 'china-remittance-' + Date.now() + '.png';
-      html2canvas(document.getElementById('receipt'), { scale:3, useCORS:true, backgroundColor:null, logging:false })
-        .then(function(canvas) { canvas.toBlob(function(blob) { resolve({canvas:canvas, blob:blob, filename:filename}); }, 'image/png'); })
-        .catch(reject);
-    }
     if (typeof html2canvas === 'undefined') {
-      var s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-      s.onload = run;
-      s.onerror = function() { reject(new Error('Failed to load html2canvas')); };
-      document.head.appendChild(s);
-      toast('Loading renderer…');
-    } else { run(); }
+      reject(new Error('html2canvas not loaded — check your connection and reload the page'));
+      return;
+    }
+    var filename = 'remitslip-' + Date.now() + '.png';
+    html2canvas(document.getElementById('receipt'), {
+      scale: 3, useCORS: true, backgroundColor: null, logging: false
+    }).then(function(canvas) {
+      canvas.toBlob(function(blob) {
+        if (!blob) { reject(new Error('Canvas to blob failed')); return; }
+        resolve({ canvas: canvas, blob: blob, filename: filename });
+      }, 'image/png');
+    }).catch(reject);
   });
 }
 
-function doDownload() {
-  var btn = document.querySelector('.act-btn.dl');
+function doSaveImage() {
+  var btn = document.getElementById('save-img-btn');
   if (btn.disabled) return;
-  btn.textContent = '⏳ Saving…'; btn.disabled = true;
+  var orig = btn.textContent;
+  btn.textContent = '⏳ Rendering…'; btn.disabled = true;
+
   renderToCanvas().then(function(r) {
-    var url = URL.createObjectURL(r.blob);
-    var a = document.createElement('a');
-    a.href = url; a.download = r.filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
-    toast('Image downloaded!');
-  }).catch(function(err) { console.error(err); toast('Save failed — try again'); })
-  .finally(function() { btn.textContent = '↓ PNG'; btn.disabled = false; });
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    // iOS: must show image in overlay so user can long-press → Save to Photos
+    if (isIOS) {
+      _overlayBlob = r.blob; _overlayFilename = r.filename;
+      document.getElementById('overlay-img').src = r.canvas.toDataURL('image/png');
+      document.getElementById('overlay-save-btn').style.display = 'none';
+      document.getElementById('overlay-hint').innerHTML =
+        '📱 <strong style="color:#bf8fff">Press &amp; hold the image</strong> then tap <em>"Add to Photos"</em>';
+      document.getElementById('img-overlay').classList.add('visible');
+      return;
+    }
+
+    // Android / desktop: try Web Share API first (gives native Save to Photos sheet)
+    if (navigator.canShare) {
+      var file = new File([r.blob], r.filename, {type:'image/png'});
+      if (navigator.canShare({files:[file]})) {
+        navigator.share({files:[file], title:'Remittance Receipt', text:'China Remittance Receipt'})
+          .then(function() { toast('Image shared / saved!'); })
+          .catch(function(e) { if (e.name !== 'AbortError') triggerDownload(r.blob, r.filename); });
+        return;
+      }
+    }
+
+    // Desktop fallback: direct download
+    triggerDownload(r.blob, r.filename);
+
+  }).catch(function(err) {
+    console.error(err); toast('Save failed — try again');
+  }).finally(function() {
+    btn.textContent = orig; btn.disabled = false;
+  });
 }
 
-function doSavePhoto() {
-  var btn = document.querySelector('.act-btn.save-photo');
-  if (btn.disabled) return;
-  btn.textContent = '⏳ Rendering…'; btn.disabled = true;
-  renderToCanvas().then(function(r) {
-    _overlayBlob = r.blob; _overlayFilename = r.filename;
-    document.getElementById('overlay-img').src = r.canvas.toDataURL('image/png');
-    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    var hint = document.getElementById('overlay-hint');
-    if (isIOS) {
-      hint.innerHTML = '📱 <strong style="color:#bf8fff">iPhone:</strong> Press &amp; hold image → "Add to Photos"';
-      document.getElementById('overlay-save-btn').style.display = 'none';
-    } else {
-      hint.innerHTML = '📲 Tap <strong style="color:#4caf50">Save Photo</strong> to download.';
-      document.getElementById('overlay-save-btn').style.display = 'inline-flex';
-    }
-    document.getElementById('img-overlay').classList.add('visible');
-  }).catch(function(err) { console.error(err); toast('Render failed'); })
-  .finally(function() { btn.textContent = '📲 Save to Photos'; btn.disabled = false; });
+function triggerDownload(blob, filename) {
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+  toast('Image saved to Downloads!');
 }
 
 function overlayDownload() {
   if (!_overlayBlob) { toast('Nothing to save'); return; }
-  if (navigator.canShare) {
-    var file = new File([_overlayBlob], _overlayFilename, {type:'image/png'});
-    if (navigator.canShare({files:[file]})) {
-      navigator.share({files:[file], title:'Remittance Receipt', text:'China Remittance Receipt'})
-        .then(function() { toast('Saved!'); closeOverlay(); })
-        .catch(function(e) { if (e.name !== 'AbortError') fallbackSave(); else toast('Cancelled'); });
-      return;
-    }
-  }
-  fallbackSave();
+  triggerDownload(_overlayBlob, _overlayFilename);
+  closeOverlay();
 }
 
 function fallbackSave() {
   if (!_overlayBlob) return;
-  var url = URL.createObjectURL(_overlayBlob);
-  var a = document.createElement('a');
-  a.href = url; a.download = _overlayFilename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
-  toast('Saved to Downloads!'); closeOverlay();
+  triggerDownload(_overlayBlob, _overlayFilename);
+  closeOverlay();
 }
 
 function closeOverlay() {
